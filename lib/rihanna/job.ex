@@ -107,7 +107,7 @@ defmodule Rihanna.Job do
       {:ok, %Postgrex.Result{rows: [job]}} ->
         job = from_sql(job)
 
-        :telemetry.execute([:rihanna, :job, :enqueued], %{count: 1}, %{job_id: job.id})
+        Rihanna.Metrics.send_enqueued_event(%{job_id: job.id, count: 1})
 
         {:ok, job}
 
@@ -305,7 +305,7 @@ defmodule Rihanna.Job do
 
     release_lock(pg, job_id)
 
-    :telemetry.execute([:rihanna, :job, :success], %{count: 1}, %{job_id: job_id})
+    Rihanna.Metrics.send_success_event(%{job_id: job_id, count: 1})
 
     {:ok, num_rows}
   end
@@ -328,7 +328,7 @@ defmodule Rihanna.Job do
 
     release_lock(pg, job_id)
 
-    :telemetry.execute([:rihanna, :job, :failure], %{count: 1}, %{job_id: job_id})
+    Rihanna.Metrics.send_failure_event(%{job_id: job_id, count: 1})
 
     {:ok, num_rows}
   end

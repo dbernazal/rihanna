@@ -78,19 +78,6 @@ defmodule Rihanna.JobDispatcher do
     {:noreply, Map.put(state, :working, working)}
   end
 
-  def handle_call(:dead_queue_count, _from, %{pg: pg} = state),
-    do: {:reply, Rihanna.Job.dead_queue_count(pg), state}
-
-  def handle_call(:pending_queue_count, _from, %{pg: pg} = state),
-    do: {:reply, Rihanna.Job.pending_queue_count(pg), state}
-
-  def handle_call(:running_queue_count, _from, %{working: working} = state),
-    do: {:reply, Enum.count(working), state}
-
-  def pq_count(), do: GenServer.call(__MODULE__, :pending_queue_count)
-  def dq_count(), do: GenServer.call(__MODULE__, :dead_queue_count)
-  def rq_count(), do: GenServer.call(__MODULE__, :running_queue_count)
-
   defp job_raised(%{id: id, term: {job_module, arg}}, reason, pg) do
     # NOTE: Do we need to demonitor here?
     Rihanna.Job.mark_failed(pg, id, DateTime.utc_now(), Exception.format_exit(reason))
