@@ -105,8 +105,9 @@ defmodule Rihanna.Job do
 
     case result do
       {:ok, %Postgrex.Result{rows: [job]}} ->
-        :telemetry.execute([:rihanna, :job, :enqueued], 1)
-        {:ok, from_sql(job)}
+        job = from_sql(job)
+        :telemetry.execute([:rihanna, :job, :enqueued], %{count: 1}, %{job_id: job.id})
+        {:ok, job}
 
       {:error, %Postgrex.Error{postgres: %{pg_code: "42P01"}}} ->
         # Undefined table error (e.g. `rihanna_jobs` table missing), warn user
