@@ -108,7 +108,7 @@ defmodule Rihanna.Job do
         %{id: job_id, term: {module, _}} = job = from_sql(job)
 
         :telemetry.execute([:rihanna, :job, :enqueued], %{count: 1}, %{
-          job_id: job.id,
+          job_id: job_id,
           module: module
         })
 
