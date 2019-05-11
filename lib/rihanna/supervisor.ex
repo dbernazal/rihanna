@@ -57,7 +57,7 @@ defmodule Rihanna.Supervisor do
           id: Rihanna.JobDispatcher,
           start: {Rihanna.JobDispatcher, :start_link, [config, [name: Rihanna.JobDispatcher]]}
         },
-        {Rihanna.Metrics, [config]}
+        {Rihanna.Metrics, [config, [name: Rihanna.Metrics]]}
       ]
       |> Enum.filter(& &1)
 
