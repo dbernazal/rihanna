@@ -10,7 +10,6 @@ defmodule Rihanna.Metrics do
   @doc false
   def init(config) do
     db = Keyword.get(config, :db)
-    startup_delay = Keyword.get(config, :startup_delay, Rihanna.Config.startup_delay())
 
     # NOTE: These are linked because it is important that the pg session is also
     # killed if the JobDispatcher dies since otherwise we may leave dangling
@@ -19,9 +18,6 @@ defmodule Rihanna.Metrics do
 
     state = %{pg: pg}
 
-    # Use a startup delay to avoid killing the supervisor if we can't connect
-    # to the database for some reason.
-    Process.send_after(self(), :initialise, startup_delay)
     {:ok, state}
   end
 
