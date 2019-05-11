@@ -333,6 +333,30 @@ defmodule Rihanna.Job do
     {:ok, num_rows}
   end
 
+  def pending_queue_count(pg) do
+    Postgrex.query!(
+      pg,
+      """
+      select COUNT(*)
+      from "#{table()}"
+      WHERE failed_at is NULL
+      """,
+      []
+    )
+  end
+
+  def dead_queue_count(pg) do
+    Postgrex.query!(
+      pg,
+      """
+      select COUNT(*)
+      from "#{table()}"
+      WHERE failed_at is not NULL
+      """,
+      []
+    )
+  end
+
   @doc """
   The name of the jobs table.
   """

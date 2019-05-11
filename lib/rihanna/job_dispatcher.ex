@@ -33,6 +33,14 @@ defmodule Rihanna.JobDispatcher do
     {:noreply, state}
   end
 
+  def handle_info(:dead_queue_count, %{pg: pg}), do: Rihanna.Job.dead_queue_count(pg)
+  def handle_info(:pending_queue_count, %{pg: pg}), do: Rihanna.Job.pending_queue_count(pg)
+  def handle_info(:running_queue_count, %{working: working}), do: Enum.count(working)
+
+  def pq_count(), do: GenServer.call(__MODULE__, :pending_queue_count)
+  def dq_count(), do: GenServer.call(__MODULE__, :dead_queue_count)
+  def rq_count(), do: GenServer.call(__MODULE__, :running_queue_count)
+
   def handle_info(:poll, state = %{working: working, pg: pg}) do
     jobs = lock_jobs_for_execution(pg, working)
 
