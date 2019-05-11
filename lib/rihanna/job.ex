@@ -105,8 +105,13 @@ defmodule Rihanna.Job do
 
     case result do
       {:ok, %Postgrex.Result{rows: [job]}} ->
-        job = from_sql(job)
-        :telemetry.execute([:rihanna, :job, :enqueued], %{count: 1}, %{job_id: job.id})
+        %{id: job_id, term: {module, _}} = job = from_sql(job)
+
+        :telemetry.execute([:rihanna, :job, :enqueued], %{count: 1}, %{
+          job_id: job.id,
+          module: module
+        })
+
         {:ok, job}
 
       {:error, %Postgrex.Error{postgres: %{pg_code: "42P01"}}} ->
@@ -303,6 +308,8 @@ defmodule Rihanna.Job do
 
     release_lock(pg, job_id)
 
+    :telemetry.execute([:rihanna, :job, :success], %{count: 1}, %{job_id: job.id})
+
     {:ok, num_rows}
   end
 
@@ -323,6 +330,8 @@ defmodule Rihanna.Job do
       )
 
     release_lock(pg, job_id)
+
+    :telemetry.execute([:rihanna, :job, :failure], %{count: 1}, %{job_id: job_id})
 
     {:ok, num_rows}
   end
