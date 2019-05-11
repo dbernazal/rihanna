@@ -105,6 +105,7 @@ defmodule Rihanna.Job do
 
     case result do
       {:ok, %Postgrex.Result{rows: [job]}} ->
+        Telemetry.execute([:rihanna, :job, :enqueued], 1)
         {:ok, from_sql(job)}
 
       {:error, %Postgrex.Error{postgres: %{pg_code: "42P01"}}} ->
