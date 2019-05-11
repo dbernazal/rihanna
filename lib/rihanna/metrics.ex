@@ -16,6 +16,15 @@ defmodule Rihanna.Metrics do
     # locks in the zombie pg process
     {:ok, pg} = Postgrex.start_link(db)
 
+    Telemetry.Poller.start_link(
+      measurements: [
+        {__MODULE__, :dispatch_pending_queue_count, []},
+        {__MODULE__, :dispatch_dead_queue_count, []},
+        {__MODULE__, :dispatch_running_queue_count, []}
+      ],
+      period: 10_000
+    )
+
     state = %{pg: pg}
 
     {:ok, state}
@@ -30,18 +39,26 @@ defmodule Rihanna.Metrics do
   def send_enqueued_event(%{job_id: job_id, count: count}),
     do: :telemetry.execute([:rihanna, :job, :enqueued], %{count: count}, %{job_id: job_id})
 
-  def handle_call(:dead_queue_count, _from, %{pg: pg} = state),
-    do: {:reply, Rihanna.Job.dead_queue_count(pg), state}
+  def dispatch_pending_queue_count(),
+    do:
+      :telemetry.execute([:rihanna, :job, :pending_queue_count], %{count: pending_queue_count()})
 
-  def handle_call(:pending_queue_count, _from, %{pg: pg} = state),
-    do: {:reply, Rihanna.Job.pending_queue_count(pg), state}
+  def dispatch_dead_queue_count(),
+    do: :telemetry.execute([:rihanna, :job, :dead_queue_count], %{count: dead_queue_count()})
 
-  def handle_call(:running_queue_count, _from, %{working: working} = state),
-    do: {:reply, Enum.count(working), state}
+  def dispatch_running_queue_count(),
+    do:
+      :telemetry.execute([:rihanna, :job, :running_queue_count], %{count: running_queue_count()})
 
   def pending_queue_count(), do: GenServer.call(__MODULE__, :pending_queue_count)
 
   def dead_queue_count(), do: GenServer.call(__MODULE__, :dead_queue_count)
 
   defdelegate running_queue_count(), to: Rihanna.JobDispatcher
+
+  def handle_call(:dead_queue_count, _from, %{pg: pg} = state),
+    do: {:reply, Rihanna.Job.dead_queue_count(pg), state}
+
+  def handle_call(:pending_queue_count, _from, %{pg: pg} = state),
+    do: {:reply, Rihanna.Job.pending_queue_count(pg), state}
 end
