@@ -45,7 +45,7 @@ defmodule Rihanna.MixProject do
       {:postgrex, ">= 0.13.3"},
       # Optional Ecto integration
       {:ecto, ">= 2.0.0", optional: true},
-      {:ecto_sql, ">= 3.0.0", optional: true},
+      {:ecto_sql, ">= 3.1.0", optional: true},
       {:telemetry, "~> 0.4.0"},
       # Development tools
       {:benchee, ">= 0.13.0", only: :test},
