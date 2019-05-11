@@ -40,6 +40,8 @@ defmodule Rihanna.Metrics do
     do: {:reply, Enum.count(working), state}
 
   def pending_queue_count(), do: GenServer.call(__MODULE__, :pending_queue_count)
+
   def dead_queue_count(), do: GenServer.call(__MODULE__, :dead_queue_count)
-  def running_queue_count(), do: GenServer.call(__MODULE__, :running_queue_count)
+
+  defdelegate running_queue_count(), to: Rihanna.JobDispatcher
 end
