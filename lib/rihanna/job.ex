@@ -334,27 +334,33 @@ defmodule Rihanna.Job do
   end
 
   def pending_queue_count(pg) do
-    Postgrex.query!(
-      pg,
-      """
-      select COUNT(*)
-      from "#{table()}"
-      WHERE failed_at is NULL
-      """,
-      []
-    )
+    %{rows: [[count]]} =
+      Postgrex.query!(
+        pg,
+        """
+        select COUNT(*)
+        from "#{table()}"
+        WHERE failed_at is NULL
+        """,
+        []
+      )
+
+    count
   end
 
   def dead_queue_count(pg) do
-    Postgrex.query!(
-      pg,
-      """
-      select COUNT(*)
-      from "#{table()}"
-      WHERE failed_at is not NULL
-      """,
-      []
-    )
+    %{rows: [[count]]} =
+      Postgrex.query!(
+        pg,
+        """
+        select COUNT(*)
+        from "#{table()}"
+        WHERE failed_at is not NULL
+        """,
+        []
+      )
+
+    count
   end
 
   @doc """
