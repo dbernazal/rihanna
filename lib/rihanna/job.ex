@@ -308,7 +308,7 @@ defmodule Rihanna.Job do
 
     release_lock(pg, job_id)
 
-    :telemetry.execute([:rihanna, :job, :success], %{count: 1}, %{job_id: job.id})
+    :telemetry.execute([:rihanna, :job, :success], %{count: 1}, %{job_id: job_id})
 
     {:ok, num_rows}
   end
