@@ -105,12 +105,9 @@ defmodule Rihanna.Job do
 
     case result do
       {:ok, %Postgrex.Result{rows: [job]}} ->
-        %{id: job_id, term: {module, _}} = job = from_sql(job)
+        job = from_sql(job)
 
-        :telemetry.execute([:rihanna, :job, :enqueued], %{count: 1}, %{
-          job_id: job_id,
-          module: module
-        })
+        :telemetry.execute([:rihanna, :job, :enqueued], %{count: 1}, %{job_id: job.id})
 
         {:ok, job}
 
