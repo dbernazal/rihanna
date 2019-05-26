@@ -3,6 +3,14 @@ defmodule Rihanna.Metrics do
 
   @moduledoc false
 
+  @job_event_prefix [:rihanna, :job]
+  @success_event @job_event_prefix ++ [:success]
+  @failure_event @job_event_prefix ++ [:failure]
+  @enqueued_event @job_event_prefix ++ [:enqueued]
+  @pending_queue_count_event @job_event_prefix ++ [:pending_queue_count]
+  @running_queue_count_event @job_event_prefix ++ [:running_queue_count]
+  @dead_queue_count_event @job_event_prefix ++ [:dead_queue_count]
+
   def start_link(config, opts) do
     GenServer.start_link(__MODULE__, config, opts)
   end
@@ -18,43 +26,39 @@ defmodule Rihanna.Metrics do
 
     Telemetry.Poller.start_link(
       measurements: [
-        {__MODULE__, :dispatch_pending_queue_count, []},
-        {__MODULE__, :dispatch_dead_queue_count, []},
-        {__MODULE__, :dispatch_running_queue_count, []}
+        {__MODULE__, :send_pending_queue_count, []},
+        {__MODULE__, :send_dead_queue_count, []},
+        {__MODULE__, :send_running_queue_count, []}
       ],
       period: 10_000
     )
 
-    state = %{pg: pg}
-
-    {:ok, state}
+    {:ok, %{pg: pg}}
   end
 
   def send_failure_event(%{job_id: job_id, count: count}),
-    do: :telemetry.execute([:rihanna, :job, :failure], %{count: count}, %{job_id: job_id})
+    do: :telemetry.execute(@failure_event, %{count: count}, %{job_id: job_id})
 
   def send_success_event(%{job_id: job_id, count: count}),
-    do: :telemetry.execute([:rihanna, :job, :success], %{count: count}, %{job_id: job_id})
+    do: :telemetry.execute(@success_event, %{count: count}, %{job_id: job_id})
 
   def send_enqueued_event(%{job_id: job_id, count: count}),
-    do: :telemetry.execute([:rihanna, :job, :enqueued], %{count: count}, %{job_id: job_id})
+    do: :telemetry.execute(@enqueued_event, %{count: count}, %{job_id: job_id})
 
-  def dispatch_pending_queue_count(),
-    do:
-      :telemetry.execute([:rihanna, :job, :pending_queue_count], %{count: pending_queue_count()})
+  def send_pending_queue_count(),
+    do: :telemetry.execute(@pending_queue_count_event, %{count: pending_queue_count()})
 
-  def dispatch_dead_queue_count(),
-    do: :telemetry.execute([:rihanna, :job, :dead_queue_count], %{count: dead_queue_count()})
+  def send_dead_queue_count(),
+    do: :telemetry.execute(@dead_queue_count_event, %{count: dead_queue_count()})
 
-  def dispatch_running_queue_count(),
-    do:
-      :telemetry.execute([:rihanna, :job, :running_queue_count], %{count: running_queue_count()})
+  def send_running_queue_count(),
+    do: :telemetry.execute(@running_queue_count_event, %{count: running_queue_count()})
+
+  defdelegate running_queue_count(), to: Rihanna.JobDispatcher
 
   def pending_queue_count(), do: GenServer.call(__MODULE__, :pending_queue_count)
 
   def dead_queue_count(), do: GenServer.call(__MODULE__, :dead_queue_count)
-
-  defdelegate running_queue_count(), to: Rihanna.JobDispatcher
 
   def handle_call(:dead_queue_count, _from, %{pg: pg} = state),
     do: {:reply, Rihanna.Job.dead_queue_count(pg), state}
