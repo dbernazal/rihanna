@@ -2,11 +2,11 @@ defmodule Rihanna.MetricsTest do
   use ExUnit.Case, async: false
   import TestHelper
 
-  def handle_event(name, _measurements, _metadata, _config) do
+  defp handle_event(name, _measurements, _metadata, _config) do
     send(self(), List.last(name))
   end
 
-  def setup_assertion_handler(event) do
+  defp setup_assertion_handler(event) do
     :telemetry.attach(
       "rihanna-metric-handler-#{System.unique_integer()}",
       event,
@@ -90,7 +90,7 @@ defmodule Rihanna.MetricsTest do
   end
 
   describe "pending_queue_count/1" do
-    setup do
+    setup %{pg: pg} do
       {:ok, _pid} =
         start_supervised(%{
           id: Rihanna.JobDispatcher,
@@ -99,36 +99,77 @@ defmodule Rihanna.MetricsTest do
              [[db: Application.fetch_env!(:rihanna, :postgrex)], [name: Rihanna.JobDispatcher]]}
         })
 
+      Postgrex.query!(pg, "DELETE FROM rihanna_jobs;", [])
+      {:ok, %{js: Task.Supervisor.start_link(name: Rihanna.TaskSupervisor)}}
+
       :ok
     end
 
-    test "sends the correct genserver message for 1 pending message", %{pg: pg} do
+    test "with a single scheduled job, it returns the correct count", %{pg: pg} do
       insert_job(pg, :scheduled_at)
       assert Rihanna.Metrics.pending_queue_count() == 1
     end
 
-    test "sends the correct genserver message for 1 pending message and other messages", %{pg: pg} do
+    test "with scheduled, failed, and ready jobs, it returns the correct count", %{pg: pg} do
       insert_job(pg, :scheduled_at)
       insert_job(pg, :failed)
       insert_job(pg, :ready_to_run)
-
-      assert {:noreply, _state} =
-               Rihanna.JobDispatcher.handle_info(:poll, %{working: %{}, pg: pg})
 
       assert Rihanna.Metrics.pending_queue_count() == 2
     end
   end
 
   describe "dead_queue_count/1" do
-    test "triggers the correct handler for the telemetry event" do
+    setup %{pg: pg} do
+      {:ok, _pid} =
+        start_supervised(%{
+          id: Rihanna.JobDispatcher,
+          start:
+            {Rihanna.JobDispatcher, :start_link,
+             [[db: Application.fetch_env!(:rihanna, :postgrex)], [name: Rihanna.JobDispatcher]]}
+        })
+
+      Postgrex.query!(pg, "DELETE FROM rihanna_jobs;", [])
+
+      :ok
+    end
+
+    test "with multiple jobs, returns the correct dead queue count", %{pg: pg} do
+      insert_job(pg, :failed)
+      insert_job(pg, :ready_to_run)
+
+      assert Rihanna.Metrics.dead_queue_count() == 1
     end
   end
 
-  describe "handle_call/1" do
-    test "returns the correct dead queue count" do
+  describe "handle_call/3" do
+    setup %{pg: pg} do
+      {:ok, _pid} =
+        start_supervised(%{
+          id: Rihanna.JobDispatcher,
+          start:
+            {Rihanna.JobDispatcher, :start_link,
+             [[db: Application.fetch_env!(:rihanna, :postgrex)], [name: Rihanna.JobDispatcher]]}
+        })
+
+      Postgrex.query!(pg, "DELETE FROM rihanna_jobs;", [])
+
+      :ok
     end
 
-    test "returns the correct pending queue count" do
+    test "with multiple jobs, returns the correct dead queue count", %{pg: pg} do
+      insert_job(pg, :failed)
+      insert_job(pg, :ready_to_run)
+
+      assert {:reply, 1, _} = Rihanna.Metrics.handle_call(:dead_queue_count, self(), %{pg: pg})
+    end
+
+    test "with scheduled, failed, and ready jobs, it returns the correct count", %{pg: pg} do
+      insert_job(pg, :scheduled_at)
+      insert_job(pg, :failed)
+      insert_job(pg, :ready_to_run)
+
+      assert {:reply, 2, _} = Rihanna.Metrics.handle_call(:pending_queue_count, self(), %{pg: pg})
     end
   end
 end
